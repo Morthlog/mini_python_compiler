@@ -9,18 +9,79 @@
 Package minipython;
 
 Helpers
-
-
-
-States
-
-
+	digit = ['0' .. '9'];
+	letter = ['a' .. 'z']|['A' .. 'Z']; 
+	cr = 13; 
+	lf = 10;
+	space = 32;
+	dquote = 34;
+	squote = 39;
+	all = [0..127]; 
+	eol = lf | cr | cr lf ;
+	not_eol = [all - [cr + lf]]; 
+	dot = '.';
+	pound = 35;
+	underscore = 95;
 
 Tokens
-
-
+	dott = dot;
+	tab = 9;
+	plus = '+';
+	minus = '-';
+	mult = '*';
+	dmult = '**';
+	div = '/';
+	assign = '=';
+	exclam = '!';
+	percen = '%';
+	minus_assign = '-=';
+	div_assign = '/=';
+	dict = 'dict';
+	def = 'def';
+	l_par = '(';
+	r_par = ')';
+	l_br = '[';
+	r_br = ']';
+	comma = ',';
+	qmark = '?';
+	gqmark = ';';
+	if = 'if';
+	elif = 'elif';
+	else = 'else';
+	while = 'while';
+	for = 'for';
+	in = 'in';
+	print = 'print';
+	return = 'return';
+	assert = 'assert';
+	len = 'len';
+	ascii = 'ascii';
+	import = 'import';
+	as = 'as';
+	from = 'from';
+	max = 'max';
+	min = 'min';
+	less = '<';
+	great = '>';
+	eq = '==';
+	lesseq =  '<=';
+	greateq = '>=';
+	noteq = '!=';
+	true = 'true';
+	semi = ':';
+	false = 'false';
+	and = 'and';
+	or = 'or';
+	not = 'not';
+	blank = space | eol;
+	none = 'None';
+	line_comment = pound not_eol* eol; 
+	number = digit+ | (digit+ dot digit+);
+	id = (letter | underscore) (letter | digit | underscore)*;
+	string = (dquote not_eol* dquote) | (squote not_eol* squote);
 
 Ignored Tokens
+	blank, line_comment;
 
 
 
