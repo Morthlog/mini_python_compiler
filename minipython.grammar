@@ -88,32 +88,41 @@ Ignored Tokens
 
 Productions
 
-	p_goal = {goal_syntax} p_line* eof;
+	p_goal = p_line* eof;
 
-	p_line = {line_syntax} p_function | p_statement;
+	p_line = {function} p_function 
+			| {statement} p_statement;
 
-	p_function = {def_syntax} def id l_par p_argument? r_par semi p_statement;
+	p_function = def id l_par p_argument? r_par semi p_statement;
 
-	p_argument = {argument_syntax} id p_assign_value? 
-		| {argument_comma_argument_syntax} p_comma_assign_value*;
+	p_argument = id p_assign_value?  p_comma_assign_value*;
 
-	p_assign_value = {assign_value_syntax} assign p_value;
+	p_assign_value = assign p_value;
 
-	p_comma_assign_value = {comma_assign_value_syntax} comma id p_assign_value?;
+	p_comma_assign_value = comma id p_assign_value?;
 
-	p_statement = {if_syntax} tab* if p_comparison semi p_statement
-		| {while_syntax} tab* while p_comparison semi p_statement
-		| {for_syntax} tab* for [for_id]:id in [in_id]:id semi p_statement
-		| {return_syntax} tab* return p_expression
-		| {print_syntax} tab* print p_expression p_comma_expression*
-		| {assign_op_syntax} tab* id p_assign_operators p_expression
-		| {assign_array_syntax} tab* id l_br [brackets_expression]:p_expression r_br assign [assign_expression]:p_expression
-		| {assert_syntax} tab* assert p_expression p_comma_expression?
-		| {function_call_syntax} tab* p_function_call
-		| {import_syntax} tab* p_import;
+	p_statement = {if} tab* if p_comparison semi p_statement
+		| {while} tab* while p_comparison semi p_statement
+		| {for} tab* for [for_id]:id in [in_id]:id semi p_statement
+		| {return} tab* return p_expression
+		| {print} tab* print p_expression p_comma_expression*
+		| {assign_op} tab* id p_assign_operators p_expression
+		| {assign_array} tab* id l_br [brackets_expression]:p_expression r_br assign [assign_expression]:p_expression
+		| {assert} tab* assert p_expression p_comma_expression?
+		| {function_call} tab* p_function_call
+		| {import} tab* p_import;
 
-	p_comma_expression = {comma_expression} comma p_expression;
+	p_comma_expression = comma p_expression;
 
-	p_assign_operators = {op_assign} assign 
-			| {op_minus_assign} minus_assign 
-			| {op_div_assign} div_assign;
+	p_assign_operators = {assign} assign 
+			| {minus_assign} minus_assign 
+			| {div_assign} div_assign;
+
+
+	/* currently undefined
+	p_value
+	p_comparison
+	p_expression
+	p_function_call
+	p_import
+	*/
