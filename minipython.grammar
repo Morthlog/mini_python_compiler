@@ -112,17 +112,74 @@ Productions
 		| {function_call} tab* p_function_call
 		| {import} tab* p_import;
 
-	p_comma_expression = comma p_expression;
-
 	p_assign_operators = {assign} assign 
 			| {minus_assign} minus_assign 
 			| {div_assign} div_assign;
 
+	p_value = {function_call} p_id_dot p_function_call
+			| {number} number 
+			| {string} string
+			| {none} none;
+			
+	p_comparison = {comp1} [l_expr]:p_arithmetics p_comparison_operators [r_expr]:p_arithmetics
+			| {comp2} true
+			| {comp3} false;
+	
+	p_comparison_operators = {eq} eq
+			| {noteq} noteq
+			| {less} less
+			| {great} great
+			| {lesseq} lesseq
+			| {greateq} greateq;
 
-	/* currently undefined
-	p_value
-	p_comparison
-	p_expression
-	p_function_call
-	p_import
-	*/
+	p_comparison_not = {comparison} p_comparison
+			| {not} not p_comparison_not;
+
+	p_comparison_and = {comparison_not} p_comparison_not
+			| {and} p_comparison_not and p_comparison_and;
+
+	p_comparison_or = {comparison_and} p_comparison_and
+			| {or} p_comparison_not or p_comparison_and;
+
+	p_arithmetics = {mult_div_expr} p_mult_div_expr
+			| {plus} p_arithmetics plus p_mult_div_expr
+			| {minus} p_arithmetics minus p_mult_div_expr;
+
+	p_mult_div_expr = {exp_expr} p_exp_expr
+			| {mult} p_mult_div_expr mult p_exp_expr
+			| {div} p_mult_div_expr div p_exp_expr;
+
+	p_exp_expr = {expression} p_expression 
+			| {exp} p_exp_expr dmult p_expression;
+	
+	p_expression = {element} p_element
+			| {listcall} id l_br p_arithmetics r_br
+			| {len} len l_par p_arithmetics r_par
+			| {max} max l_par p_arithmetics p_comma_expression* r_par
+			| {min} min l_par p_arithmetics p_comma_expression* r_par
+			| {list} l_br p_arg_list r_br;
+
+	p_element = {p_value} p_value
+			| {id} id
+			| {function_call} p_function_call 
+			| {pars} l_par p_arithmetics r_par;
+
+	p_function_call = id l_par p_arg_list? r_par;
+
+	p_arg_list = p_arithmetics p_comma_expression*;
+
+	p_comma_expression = comma p_expression;
+
+	p_import = {import} import p_module p_as_id? p_other_modules*
+			| {from} from p_module import id p_as_id? p_other_ids*;
+
+	p_module = p_id_dot* id;
+
+	p_as_id = as id;
+
+	p_other_modules = comma p_module p_as_id?;
+
+	p_other_ids = comma id p_as_id?;
+
+	p_id_dot = id dott;	
+
