@@ -79,7 +79,6 @@ Tokens
 	number = digit+ | (digit+ dot digit+);
 	id = (letter | underscore) (letter | digit | underscore)*;
 	string = (dquote not_eol* dquote) | (squote not_eol* squote);
-	eof = eol;
 
 Ignored Tokens
 	blank, line_comment;
@@ -88,7 +87,7 @@ Ignored Tokens
 
 Productions
 
-	p_goal = p_line* eof;
+	p_goal = p_line*;
 
 	p_line = {function} p_function 
 			| {statement} p_statement;
