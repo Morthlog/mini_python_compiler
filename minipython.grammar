@@ -17,7 +17,7 @@ Helpers
 	dquote = 34;
 	squote = 39;
 	all = [0..127]; 
-	eol = lf | cr | cr lf ;
+	eol = lf | cr | cr lf;
 	not_eol = [all - [cr + lf]]; 
 	dot = '.';
 	pound = 35;
@@ -79,6 +79,7 @@ Tokens
 	number = digit+ | (digit+ dot digit+);
 	id = (letter | underscore) (letter | digit | underscore)*;
 	string = (dquote not_eol* dquote) | (squote not_eol* squote);
+	eof = eol;
 
 Ignored Tokens
 	blank, line_comment;
@@ -100,8 +101,8 @@ Productions
 
 	p_comma_assign_value = comma id p_assign_value?;
 
-	p_statement = {if} tab* if p_comparison semi p_statement
-		| {while} tab* while p_comparison semi p_statement
+	p_statement = {if} tab* if p_comparison_or semi p_statement
+		| {while} tab* while p_comparison_or semi p_statement
 		| {for} tab* for [for_id]:id in [in_id]:id semi p_statement
 		| {return} tab* return p_expression
 		| {print} tab* print p_expression p_comma_expression*
@@ -132,13 +133,13 @@ Productions
 			| {greateq} greateq;
 
 	p_comparison_not = {comparison} p_comparison
-			| {not} not p_comparison_not;
+			| {not} not p_comparison;
 
 	p_comparison_and = {comparison_not} p_comparison_not
-			| {and} p_comparison_not and p_comparison_and;
+			| {and} p_comparison_and and p_comparison_not;
 
 	p_comparison_or = {comparison_and} p_comparison_and
-			| {or} p_comparison_not or p_comparison_and;
+			| {or} p_comparison_or or p_comparison_and;
 
 	p_arithmetics = {mult_div_expr} p_mult_div_expr
 			| {plus} p_arithmetics plus p_mult_div_expr
@@ -148,12 +149,13 @@ Productions
 			| {mult} p_mult_div_expr mult p_exp_expr
 			| {div} p_mult_div_expr div p_exp_expr;
 
-	p_exp_expr = {expression} p_expression 
-			| {exp} p_exp_expr dmult p_expression;
+	p_exp_expr = {element} p_element 
+			| {exp} p_exp_expr dmult p_element;
 	
-	p_expression = {element} p_element
+	p_expression = {p_arithmetics} p_arithmetics
 			| {listcall} id l_br p_arithmetics r_br
 			| {len} len l_par p_arithmetics r_par
+			| {ascii} ascii l_par id r_par
 			| {max} max l_par p_arithmetics p_comma_expression* r_par
 			| {min} min l_par p_arithmetics p_comma_expression* r_par
 			| {list} l_br p_arg_list r_br;
