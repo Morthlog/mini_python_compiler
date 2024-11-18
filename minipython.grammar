@@ -121,7 +121,7 @@ Productions
 			| {string} string
 			| {none} none;
 			
-	p_comparison = {comp1} [l_expr]:p_arithmetics p_comparison_operators [r_expr]:p_arithmetics
+	p_comparison = {comp1} [l_expr]:p_expression p_comparison_operators [r_expr]:p_expression
 			| {comp2} true
 			| {comp3} false;
 	
