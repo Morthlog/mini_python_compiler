@@ -19,6 +19,8 @@ Helpers
 	all = [0..127]; 
 	eol = lf | cr | cr lf;
 	not_eol = [all - [cr + lf]]; 
+	not_eol_orsquote = [not_eol - squote];
+	not_eol_ordquote = [not_eol - dquote];
 	dot = '.';
 	pound = 35;
 	underscore = 95;
@@ -33,7 +35,7 @@ Tokens
 	div = '/';
 	assign = '=';
 	exclam = '!';
-	percen = '%';
+	mod = '%';
 	minus_assign = '-=';
 	div_assign = '/=';
 	dict = 'dict';
@@ -46,8 +48,6 @@ Tokens
 	qmark = '?';
 	gqmark = ';';
 	if = 'if';
-	elif = 'elif';
-	else = 'else';
 	while = 'while';
 	for = 'for';
 	in = 'in';
@@ -78,7 +78,7 @@ Tokens
 	line_comment = pound not_eol* eol; 
 	number = digit+ | (digit+ dot digit+);
 	id = (letter | underscore) (letter | digit | underscore)*;
-	string = (dquote not_eol* dquote) | (squote not_eol* squote);
+	string = (dquote not_eol_ordquote* dquote) | (squote not_eol_orsquote* squote);
 	eof = eol;
 
 Ignored Tokens
@@ -104,11 +104,11 @@ Productions
 	p_statement = {if} tab* if p_comparison_or semi p_statement
 		| {while} tab* while p_comparison_or semi p_statement
 		| {for} tab* for [for_id]:id in [in_id]:id semi p_statement
-		| {return} tab* return p_expression
-		| {print} tab* print p_expression p_comma_expression*
-		| {assign_op} tab* id p_assign_operators p_expression
-		| {assign_array} tab* id l_br [brackets_expression]:p_expression r_br assign [assign_expression]:p_expression
-		| {assert} tab* assert p_expression p_comma_expression?
+		| {return} tab* return p_arithmetics
+		| {print} tab* print p_arithmetics p_comma_arithemetic*
+		| {assign_op} tab* id p_assign_operators p_arithmetics
+		| {assign_array} tab* id l_br [brackets_expression]:p_arithmetics r_br assign [assign_expression]:p_arithmetics
+		| {assert} tab* assert p_arithmetics p_comma_arithemetic?
 		| {function_call} tab* p_function_call
 		| {import} tab* p_import;
 
@@ -120,8 +120,10 @@ Productions
 			| {number} number 
 			| {string} string
 			| {none} none;
+
+	p_comma_value = comma p_value;
 			
-	p_comparison = {comp1} [l_expr]:p_expression p_comparison_operators [r_expr]:p_expression
+	p_comparison = {comp1} [l_expr]:p_arithmetics p_comparison_operators [r_expr]:p_arithmetics
 			| {comp2} true
 			| {comp3} false;
 	
@@ -147,29 +149,30 @@ Productions
 
 	p_mult_div_expr = {exp_expr} p_exp_expr
 			| {mult} p_mult_div_expr mult p_exp_expr
-			| {div} p_mult_div_expr div p_exp_expr;
+			| {div} p_mult_div_expr div p_exp_expr
+			| {mod} p_mult_div_expr mod p_exp_expr;
 
-	p_exp_expr = {element} p_element 
-			| {exp} p_exp_expr dmult p_element;
+	p_exp_expr = {expression} p_expression 
+			| {exp} p_exp_expr dmult p_expression;
 	
-	p_expression = {p_arithmetics} p_arithmetics
+	p_expression = {element} p_element
 			| {listcall} id l_br p_arithmetics r_br
 			| {len} len l_par p_arithmetics r_par
 			| {ascii} ascii l_par id r_par
-			| {max} max l_par p_arithmetics p_comma_expression* r_par
-			| {min} min l_par p_arithmetics p_comma_expression* r_par
-			| {list} l_br p_arg_list r_br;
+			| {max} max l_par p_value p_comma_value* r_par
+			| {min} min l_par p_value p_comma_value* r_par
+			| {pars} l_par p_arithmetics r_par
+			| {list} l_br p_value p_comma_value* r_br; 
 
 	p_element = {p_value} p_value
 			| {id} id
-			| {function_call} p_function_call 
-			| {pars} l_par p_arithmetics r_par;
+			| {function_call} p_function_call;
 
 	p_function_call = id l_par p_arg_list? r_par;
 
-	p_arg_list = p_arithmetics p_comma_expression*;
+	p_arg_list = p_arithmetics p_comma_arithemetic*;
 
-	p_comma_expression = comma p_expression;
+	p_comma_arithemetic = comma p_arithmetics;
 
 	p_import = {import} import p_module p_as_id? p_other_modules*
 			| {from} from p_module import id p_as_id? p_other_ids*;
