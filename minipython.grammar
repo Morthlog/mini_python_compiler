@@ -88,102 +88,166 @@ Ignored Tokens
 
 Productions
 
+	p_goal = p_line* {-> New p_goal( [p_line] ) };
+
+	p_line = {function} p_function {-> New p_line.function( p_function ) } 
+			| {statement} p_statement {-> New p_line.statement( p_statement ) };
+
+	p_function = def id l_par p_argument? r_par semi p_statement {-> New p_function( id, [p_argument], p_statement ) }; 
+
+	p_argument = id p_assign_value?  p_comma_assign_value* {-> New p_argument( id, [p_assign_value], [p_comma_assign_value] ) };
+
+	p_comma_assign_value = comma id p_assign_value? {-> New p_comma_assign_value( id, [p_assign_value] ) };
+	
+	p_assign_value = assign p_value {-> New p_assign_value( p_value.p_arithmetics ) };
+
+	p_statement = {if} tab* if p_comparison_or semi p_statement {-> New p_statement.if( p_comparison_or, p_statement ) }
+			| {while} tab* while p_comparison_or semi p_statement {-> New p_statement.while( p_comparison_or, p_statement ) }
+			| {for} tab* for [for_id]:id in [in_id]:id semi p_statement {-> New p_statement.for( for_id, in_id, p_statement ) }
+			| {return} tab* return p_arithmetics {-> New p_statement.return( p_arithmetics ) }
+			| {print} tab* print p_arithmetics p_comma_value* {-> New p_statement.print( p_arithmetics, [p_comma_value] ) }
+			| {assign_op} tab* id p_assign_operators p_arithmetics {-> New p_statement.assign_op( id, p_arithmetics ) }
+			| {assign_array} tab* id l_br [brackets_expression]:p_arithmetics r_br assign [assign_expression]:p_arithmetics {-> New p_statement.assign_array( id, brackets_expression, assign_expression ) }
+			| {assert} tab* assert p_arithmetics p_comma_value? {-> New p_statement.assert( p_arithmetics, [p_comma_value] ) }
+			| {function_call} tab* p_function_call {-> New p_statement.function_call( p_function_call ) }
+			| {import} tab* p_import {-> p_import.p_statement};
+
+	p_assign_operators{->} = {assign} assign {->}
+			| {minus_assign} minus_assign {->}
+			| {div_assign} div_assign {->};
+
+	p_value{-> p_arithmetics} = {function_call} p_id_dot p_function_call {-> New p_arithmetics.function_call( p_id_dot, p_function_call ) }
+			| {number} number  {-> New p_arithmetics.number( number ) }
+			| {string} string {-> New p_arithmetics.string( string ) }
+			| {none} none {-> New p_arithmetics.none( none ) };
+
+	p_comma_value = comma p_arithmetics {-> New p_comma_value( p_arithmetics ) };
+			
+	p_comparison {-> p_comparison_or} = {comp1} [l_expr]:p_arithmetics p_comparison_operators [r_expr]:p_arithmetics {-> New p_comparison_or.comp1( l_expr, r_expr ) }
+			| {comp2} true {-> New p_comparison_or.comp2( true ) }
+			| {comp3} false {-> New p_comparison_or.comp3( false ) };
+	
+	p_comparison_operators{->} = {eq} eq {->}
+			| {noteq} noteq {->}
+			| {less} less {->}
+			| {great} great {->}
+			| {lesseq} lesseq {->}
+			| {greateq} greateq {->};
+
+	p_comparison_not {-> p_comparison_or} = {comparison} p_comparison {-> p_comparison.p_comparison_or }
+			| {not} not p_comparison {-> New p_comparison_or.not( p_comparison.p_comparison_or ) };
+
+	p_comparison_and {-> p_comparison_or} = {comparison_not} p_comparison_not {-> p_comparison_not.p_comparison_or }
+			| {and} p_comparison_and and p_comparison_not{-> New p_comparison_or.and( p_comparison_and.p_comparison_or, p_comparison_not.p_comparison_or ) };
+
+	p_comparison_or = {comparison_and} p_comparison_and {-> p_comparison_and.p_comparison_or }
+			| {or} p_comparison_or or p_comparison_and {-> New p_comparison_or.or( p_comparison_or, p_comparison_and.p_comparison_or ) };
+
+	p_arithmetics = {mult_div_expr} p_mult_div_expr {-> p_mult_div_expr.p_arithmetics }
+			| {plus} p_arithmetics plus p_mult_div_expr {-> New p_arithmetics.plus( p_arithmetics, p_mult_div_expr.p_arithmetics ) }
+			| {minus} p_arithmetics minus p_mult_div_expr {-> New p_arithmetics.minus ( p_arithmetics, p_mult_div_expr.p_arithmetics ) }; 
+
+	p_mult_div_expr {-> p_arithmetics } = {exp_expr} p_exp_expr{-> p_exp_expr.p_arithmetics }
+			| {mult} p_mult_div_expr mult p_exp_expr {-> New p_arithmetics.mult( p_mult_div_expr.p_arithmetics, p_exp_expr.p_arithmetics ) }
+			| {div} p_mult_div_expr div p_exp_expr {-> New p_arithmetics.div( p_mult_div_expr.p_arithmetics, p_exp_expr.p_arithmetics ) }
+			| {mod} p_mult_div_expr mod p_exp_expr {-> New p_arithmetics.mod( p_mult_div_expr.p_arithmetics, p_exp_expr.p_arithmetics ) };
+
+	p_exp_expr {-> p_arithmetics }= {expression} p_expression {-> p_expression.p_arithmetics }
+			| {exp} p_exp_expr dmult p_expression {-> New p_arithmetics.exp( p_exp_expr.p_arithmetics, p_expression.p_arithmetics ) };
+	
+	p_expression {-> p_arithmetics }= {element} p_element {-> p_element.p_arithmetics }
+			| {listcall} id l_br p_arithmetics r_br {-> New p_arithmetics.listcall( id, p_arithmetics ) }
+			| {len} len l_par p_arithmetics r_par {-> New p_arithmetics.len( p_arithmetics ) }
+			| {ascii} ascii l_par id r_par {-> New p_arithmetics.ascii( id ) }
+			| {max} max l_par p_value p_comma_value* r_par {-> New p_arithmetics.max( p_value.p_arithmetics, [p_comma_value] ) }
+			| {min} min l_par p_value p_comma_value* r_par {-> New p_arithmetics.min( p_value.p_arithmetics, [p_comma_value] ) }
+			| {pars} l_par p_arithmetics r_par {-> New p_arithmetics.pars( p_arithmetics ) }
+			| {list} l_br p_arg_list r_br {-> New p_arithmetics.list( p_arg_list ) }; 
+
+	p_element {-> p_arithmetics } = {p_value} p_value {-> p_value.p_arithmetics }
+			| {id} id {-> New p_arithmetics.id( id ) }
+			| {function_call} p_function_call {-> New p_arithmetics.function( p_function_call ) }; 
+
+	p_function_call = id l_par p_arg_list? r_par {-> New p_function_call( id, [p_arg_list] ) };
+
+	p_arg_list = p_arithmetics p_comma_value* {-> New p_arg_list( p_arithmetics, [p_comma_value] ) };
+
+	p_comma_arithmetics = comma p_arithmetics {-> New p_comma_arithmetics( p_arithmetics ) };
+
+	p_import {-> p_statement } = {import} import p_module p_as_id? p_other_modules* {-> New p_statement.import( p_module.p_statement, [p_as_id], [p_other_modules.p_statement] ) }
+			| {from} from p_module import id p_as_id? p_other_ids* {-> New p_statement.from( p_module.p_statement, id, [p_as_id], [p_other_ids] ) };
+
+	p_module {-> p_statement} = p_id_dot* id {-> New p_statement.module( [p_id_dot], id ) };
+
+	p_as_id = as id {-> New p_as_id( id ) };
+
+	p_other_modules {-> p_statement } = comma p_module p_as_id? {-> New p_statement.other_modules( p_module.p_statement, [p_as_id] ) };
+
+	p_other_ids = comma id p_as_id? {-> New p_other_ids( id, [p_as_id] ) };
+
+	p_id_dot = id dott{-> New p_id_dot( id ) };	
+
+
+
+Abstract Syntax Tree
+
 	p_goal = p_line*;
 
 	p_line = {function} p_function 
 			| {statement} p_statement;
-
-	p_function = def id l_par p_argument? r_par semi p_statement;
-
-	p_argument = id p_assign_value?  p_comma_assign_value*;
-
-	p_assign_value = assign p_value;
-
-	p_comma_assign_value = comma id p_assign_value?;
-
-	p_statement = {if} tab* if p_comparison_or semi p_statement
-		| {while} tab* while p_comparison_or semi p_statement
-		| {for} tab* for [for_id]:id in [in_id]:id semi p_statement
-		| {return} tab* return p_arithmetics
-		| {print} tab* print p_arithmetics p_comma_arithemetic*
-		| {assign_op} tab* id p_assign_operators p_arithmetics
-		| {assign_array} tab* id l_br [brackets_expression]:p_arithmetics r_br assign [assign_expression]:p_arithmetics
-		| {assert} tab* assert p_arithmetics p_comma_arithemetic?
-		| {function_call} tab* p_function_call
-		| {import} tab* p_import;
-
-	p_assign_operators = {assign} assign 
-			| {minus_assign} minus_assign 
-			| {div_assign} div_assign;
-
-	p_value = {function_call} p_id_dot p_function_call
-			| {number} number 
-			| {string} string
-			| {none} none;
-
-	p_comma_value = comma p_value;
 			
-	p_comparison = {comp1} [l_expr]:p_arithmetics p_comparison_operators [r_expr]:p_arithmetics
-			| {comp2} true
-			| {comp3} false;
+	p_function = id p_argument* p_statement;		
+
+	p_argument = id p_assign_value* p_comma_assign_value*;
+	p_comma_assign_value = id p_assign_value*;
+	p_assign_value = p_arithmetics;
 	
-	p_comparison_operators = {eq} eq
-			| {noteq} noteq
-			| {less} less
-			| {great} great
-			| {lesseq} lesseq
-			| {greateq} greateq;
+	p_statement = {if} p_comparison_or p_statement
+				| {while} p_comparison_or p_statement
+				| {for} [for_id]:id [in_id]:id p_statement
+				| {return} p_arithmetics
+				| {print} p_arithmetics p_comma_value*
+				| {assign_op} id p_arithmetics
+				| {assign_array} id [brackets_expression]:p_arithmetics [assign_expression]:p_arithmetics
+				| {assert} p_arithmetics p_comma_value* 
+				| {function_call} p_function_call
+				| {import} [l]:p_statement p_as_id* [r]:p_statement*	
+				| {from} p_statement id p_as_id* p_other_ids*
+				| {module} p_id_dot* id
+				| {other_modules} p_statement p_as_id*;
 
-	p_comparison_not = {comparison} p_comparison
-			| {not} not p_comparison;
-
-	p_comparison_and = {comparison_not} p_comparison_not
-			| {and} p_comparison_and and p_comparison_not;
-
-	p_comparison_or = {comparison_and} p_comparison_and
-			| {or} p_comparison_or or p_comparison_and;
-
-	p_arithmetics = {mult_div_expr} p_mult_div_expr
-			| {plus} p_arithmetics plus p_mult_div_expr
-			| {minus} p_arithmetics minus p_mult_div_expr;
-
-	p_mult_div_expr = {exp_expr} p_exp_expr
-			| {mult} p_mult_div_expr mult p_exp_expr
-			| {div} p_mult_div_expr div p_exp_expr
-			| {mod} p_mult_div_expr mod p_exp_expr;
-
-	p_exp_expr = {expression} p_expression 
-			| {exp} p_exp_expr dmult p_expression;
+	p_comparison_or = {not} p_comparison_or
+					| {and} [l]:p_comparison_or [r]:p_comparison_or
+					| {or} [l]:p_comparison_or [r]:p_comparison_or
+					| {comp1} [l_expr]:p_arithmetics [r_expr]:p_arithmetics
+					| {comp2} true
+					| {comp3} false;
+					
+	p_arithmetics = {plus} [l]:p_arithmetics [r]:p_arithmetics
+					|{minus} [l]:p_arithmetics [r]:p_arithmetics
+					|{mult} [l]:p_arithmetics [r]:p_arithmetics
+					|{div} [l]:p_arithmetics [r]:p_arithmetics
+					|{mod} [l]:p_arithmetics [r]:p_arithmetics
+					|{exp} [l]:p_arithmetics [r]:p_arithmetics
+					|{listcall} id p_arithmetics
+					|{len} p_arithmetics
+					|{ascii} id
+					|{max} p_arithmetics p_comma_value*
+					|{min} p_arithmetics p_comma_value*
+					|{list} p_arg_list
+					|{id} id
+					|{function} p_function_call
+					|{pars} p_arithmetics
+					|{function_call} p_id_dot p_function_call
+					|{number} number
+					|{string} string
+					|{none} none;
+					
+	p_comma_arithmetics = p_arithmetics;				
+	p_function_call = id p_arg_list*;
+	p_arg_list = p_arithmetics p_comma_value*;
+	p_comma_value = p_arithmetics;
 	
-	p_expression = {element} p_element
-			| {listcall} id l_br p_arithmetics r_br
-			| {len} len l_par p_arithmetics r_par
-			| {ascii} ascii l_par id r_par
-			| {max} max l_par p_value p_comma_value* r_par
-			| {min} min l_par p_value p_comma_value* r_par
-			| {pars} l_par p_arithmetics r_par
-			| {list} l_br p_value p_comma_value* r_br; 
-
-	p_element = {p_value} p_value
-			| {id} id
-			| {function_call} p_function_call;
-
-	p_function_call = id l_par p_arg_list? r_par;
-
-	p_arg_list = p_arithmetics p_comma_arithemetic*;
-
-	p_comma_arithemetic = comma p_arithmetics;
-
-	p_import = {import} import p_module p_as_id? p_other_modules*
-			| {from} from p_module import id p_as_id? p_other_ids*;
-
-	p_module = p_id_dot* id;
-
-	p_as_id = as id;
-
-	p_other_modules = comma p_module p_as_id?;
-
-	p_other_ids = comma id p_as_id?;
-
-	p_id_dot = id dott;	
-
+	p_as_id = id;
+	p_other_ids = id p_as_id*;
+	p_id_dot = id;
