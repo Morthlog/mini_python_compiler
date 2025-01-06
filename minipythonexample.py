@@ -2,13 +2,30 @@
 #A miniPython example
 
 def fib(n):    # write Fibonacci series up to n
-               a = 0
+               a = b + 1
                b = 1
                while a < n:
                         print a
                         a = b
                         b = a + b
-                      
+def add(x, y, z):
+        return None
+
+def add(a, b, c):
+        return None
+
+def add(x, y, z=1):
+        return None
+
+def add(x, y):
+        return None
+
+def add3(x, y, z):
+        return None
+
+def add3(x, y, z=1):
+        return None
+
 def funcwithdef(name,university="aueb", ok, val = 5):
        print name, " studies in ", university
 
@@ -73,3 +90,6 @@ def comparisonOrder():
 
 def arithmeticOrder():
        return None
+
+if not true:
+        return a + b
