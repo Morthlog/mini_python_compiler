@@ -37,14 +37,16 @@ import java.util.ArrayList;
 import java.util.Hashtable;
 
 public class VisitorFirstPass extends DepthFirstAdapter{
-    public Hashtable<String, ArrayList<SymbolTableEntry>> symbolTable;
+    public Hashtable<String, SymbolTableEntryVariable> variablesTable;
+    public Hashtable<String, ArrayList<SymbolTableEntryFunction>> functionsTable;
 
     private final String STRATEGY_VALUE = "VALUE";
     private final String STRATEGY_TYPE = "TYPE";
 
     public VisitorFirstPass()
     {
-        symbolTable = new Hashtable<String, ArrayList<SymbolTableEntry>>();
+        variablesTable = new Hashtable<String, SymbolTableEntryVariable>();
+        functionsTable = new Hashtable<String, ArrayList<SymbolTableEntryFunction>>();
     }
 
     
@@ -56,8 +58,7 @@ public class VisitorFirstPass extends DepthFirstAdapter{
         int numTotalParameters = 0;
         int numDefaultParameters = 0;
         
-        SymbolTableEntry newEntry = new SymbolTableEntry();
-        newEntry.type = SymbolTableEntry.EntryType.FUNCTION;
+        SymbolTableEntryFunction newEntry = new SymbolTableEntryFunction();
 
         if(node.getPArgument().size() != 0)
         {
@@ -67,7 +68,9 @@ public class VisitorFirstPass extends DepthFirstAdapter{
     
             // first parameter
             String parameterID = parameters.getId().toString().trim();
-            newEntry.parameterNames.add(parameterID);
+            newEntry.parameters.add(new FunctionParameter());
+            newEntry.parameters.get(newEntry.parameters.size() - 1).name = parameterID;
+            
             if(parameters.getPAssignValue().size() != 0)
             {
                 // first parameter has default value
@@ -83,18 +86,18 @@ public class VisitorFirstPass extends DepthFirstAdapter{
 
                 setIn(value, STRATEGY_VALUE);
                 value.apply(this);
-
-                newEntry.defaultValues.add((String)getOut(value));
+                
+                newEntry.parameters.get(newEntry.parameters.size() - 1).defaultValue = (String)getOut(value);
 
                 setIn(value, STRATEGY_TYPE);
                 value.apply(this);
 
-                newEntry.parameterTypes.add((SymbolTableEntry.DataType)getOut(value));
+                newEntry.parameters.get(newEntry.parameters.size() - 1).type = (DataType)getOut(value);
             }
             else
             {
-                newEntry.defaultValues.add("None");
-                newEntry.parameterTypes.add(SymbolTableEntry.DataType.NONE);
+                newEntry.parameters.get(newEntry.parameters.size() - 1).defaultValue = "None";
+                newEntry.parameters.get(newEntry.parameters.size() - 1).type = DataType.NONE;
             }
 
             numTotalParameters++;
@@ -104,7 +107,9 @@ public class VisitorFirstPass extends DepthFirstAdapter{
                 APCommaAssignValue parameter = (APCommaAssignValue)parameters.getPCommaAssignValue().get(i);
 
                 parameterID = parameter.getId().toString().trim();
-                newEntry.parameterNames.add(parameterID);
+
+                newEntry.parameters.add(new FunctionParameter());
+                newEntry.parameters.get(newEntry.parameters.size() - 1).name = parameterID;
 
                 if(parameter.getPAssignValue().size() != 0)
                 {
@@ -122,17 +127,17 @@ public class VisitorFirstPass extends DepthFirstAdapter{
                     setIn(value, STRATEGY_VALUE);
                     value.apply(this);
 
-                    newEntry.defaultValues.add((String)getOut(value));
+                    newEntry.parameters.get(newEntry.parameters.size() - 1).defaultValue = (String)getOut(value);
 
                     setIn(value, STRATEGY_TYPE);
                     value.apply(this);
 
-                    newEntry.parameterTypes.add((SymbolTableEntry.DataType)getOut(value));
+                    newEntry.parameters.get(newEntry.parameters.size() - 1).type = (DataType)getOut(value);
                 }
                 else
                 {
-                    newEntry.defaultValues.add("None");
-                    newEntry.parameterTypes.add(SymbolTableEntry.DataType.NONE);
+                    newEntry.parameters.get(newEntry.parameters.size() - 1).defaultValue = "None";
+                    newEntry.parameters.get(newEntry.parameters.size() - 1).type = DataType.NONE;
                 }
 
                 numTotalParameters++;
@@ -141,40 +146,36 @@ public class VisitorFirstPass extends DepthFirstAdapter{
 
         int numNonDefaultParameters = numTotalParameters - numDefaultParameters;
 
-        if(!symbolTable.containsKey(functionID))
+        if(!functionsTable.containsKey(functionID))
         {
-            symbolTable.put(functionID, new ArrayList<SymbolTableEntry>());
+            functionsTable.put(functionID, new ArrayList<SymbolTableEntryFunction>());
         }
 
         // we do not know what the return type is until we reach a return statement on the second pass, we assume None
-        newEntry.dataType = SymbolTableEntry.DataType.NONE;
-        newEntry.numTotalParameters = numTotalParameters;
+        newEntry.returnType = DataType.UNKNOWN;
         newEntry.numNonDefaultParameters = numNonDefaultParameters;
 
-        ArrayList<SymbolTableEntry> entries = symbolTable.get(functionID);
+        ArrayList<SymbolTableEntryFunction> entries = functionsTable.get(functionID);
 
         boolean isEntryValid = true;
 
         for(int i = 0; i < entries.size(); ++i)
         {
-            SymbolTableEntry entry = entries.get(i);
+            SymbolTableEntryFunction entry = entries.get(i);
 
-            if(entry.type == SymbolTableEntry.EntryType.FUNCTION)
+            if(numTotalParameters == entry.parameters.size()
+            || (numNonDefaultParameters <= entry.numNonDefaultParameters && numTotalParameters > entry.parameters.size()) ||
+            (numNonDefaultParameters >= entry.numNonDefaultParameters && numTotalParameters < entry.parameters.size()))
             {
-                if(numTotalParameters == entry.numTotalParameters
-                || (numNonDefaultParameters <= entry.numNonDefaultParameters && numTotalParameters > entry.numTotalParameters) ||
-                (numNonDefaultParameters >= entry.numNonDefaultParameters && numTotalParameters < entry.numTotalParameters))
-                {
-                    // function entry is not valid
-                    isEntryValid = false;
-                    break;
-                }
+                // function entry is not valid
+                isEntryValid = false;
+                break;
             }
         }
 
         if(isEntryValid)
         {
-            symbolTable.get(functionID).add(newEntry);
+            functionsTable.get(functionID).add(newEntry);
         }
         else
         {
@@ -205,13 +206,13 @@ public class VisitorFirstPass extends DepthFirstAdapter{
                 setIn(node.getR(), STRATEGY_TYPE);
                 node.getR().apply(this);
 
-                if((SymbolTableEntry.DataType)getOut(node.getL()) != (SymbolTableEntry.DataType)getOut(node.getR()))
+                if((DataType)getOut(node.getL()) != (DataType)getOut(node.getR()))
                 {
-                    setOut(node, SymbolTableEntry.DataType.INVALID);
+                    setOut(node, DataType.INVALID);
                 }
                 else
                 {
-                    setOut(node, (SymbolTableEntry.DataType)getOut(node.getL()));
+                    setOut(node, (DataType)getOut(node.getL()));
                 }
             }
         }
@@ -240,13 +241,13 @@ public class VisitorFirstPass extends DepthFirstAdapter{
                 setIn(node.getR(), STRATEGY_TYPE);
                 node.getR().apply(this);
 
-                if((SymbolTableEntry.DataType)getOut(node.getL()) != (SymbolTableEntry.DataType)getOut(node.getR()))
+                if((DataType)getOut(node.getL()) != (DataType)getOut(node.getR()))
                 {
-                    setOut(node, SymbolTableEntry.DataType.INVALID);
+                    setOut(node, DataType.INVALID);
                 }
                 else
                 {
-                    setOut(node, (SymbolTableEntry.DataType)getOut(node.getL()));
+                    setOut(node, (DataType)getOut(node.getL()));
                 }
             }
         }
@@ -275,13 +276,13 @@ public class VisitorFirstPass extends DepthFirstAdapter{
                 setIn(node.getR(), STRATEGY_TYPE);
                 node.getR().apply(this);
 
-                if((SymbolTableEntry.DataType)getOut(node.getL()) != (SymbolTableEntry.DataType)getOut(node.getR()))
+                if((DataType)getOut(node.getL()) != (DataType)getOut(node.getR()))
                 {
-                    setOut(node, SymbolTableEntry.DataType.INVALID);
+                    setOut(node, DataType.INVALID);
                 }
                 else
                 {
-                    setOut(node, (SymbolTableEntry.DataType)getOut(node.getL()));
+                    setOut(node, (DataType)getOut(node.getL()));
                 }
             }
         }
@@ -310,13 +311,13 @@ public class VisitorFirstPass extends DepthFirstAdapter{
                 setIn(node.getR(), STRATEGY_TYPE);
                 node.getR().apply(this);
 
-                if((SymbolTableEntry.DataType)getOut(node.getL()) != (SymbolTableEntry.DataType)getOut(node.getR()))
+                if((DataType)getOut(node.getL()) != (DataType)getOut(node.getR()))
                 {
-                    setOut(node, SymbolTableEntry.DataType.INVALID);
+                    setOut(node, DataType.INVALID);
                 }
                 else
                 {
-                    setOut(node, (SymbolTableEntry.DataType)getOut(node.getL()));
+                    setOut(node, (DataType)getOut(node.getL()));
                 }
             }
         }
@@ -345,13 +346,13 @@ public class VisitorFirstPass extends DepthFirstAdapter{
                 setIn(node.getR(), STRATEGY_TYPE);
                 node.getR().apply(this);
 
-                if((SymbolTableEntry.DataType)getOut(node.getL()) != (SymbolTableEntry.DataType)getOut(node.getR()))
+                if((DataType)getOut(node.getL()) != (DataType)getOut(node.getR()))
                 {
-                    setOut(node, SymbolTableEntry.DataType.INVALID);
+                    setOut(node, DataType.INVALID);
                 }
                 else
                 {
-                    setOut(node, (SymbolTableEntry.DataType)getOut(node.getL()));
+                    setOut(node, (DataType)getOut(node.getL()));
                 }
             }
         }
@@ -380,13 +381,13 @@ public class VisitorFirstPass extends DepthFirstAdapter{
                 setIn(node.getR(), STRATEGY_TYPE);
                 node.getR().apply(this);
 
-                if((SymbolTableEntry.DataType)getOut(node.getL()) != (SymbolTableEntry.DataType)getOut(node.getR()))
+                if((DataType)getOut(node.getL()) != (DataType)getOut(node.getR()))
                 {
-                    setOut(node, SymbolTableEntry.DataType.INVALID);
+                    setOut(node, DataType.INVALID);
                 }
                 else
                 {
-                    setOut(node, (SymbolTableEntry.DataType)getOut(node.getL()));
+                    setOut(node, (DataType)getOut(node.getL()));
                 }
             }
         }
@@ -412,18 +413,11 @@ public class VisitorFirstPass extends DepthFirstAdapter{
             }
             else if(strategy.equals(STRATEGY_TYPE))
             {
-                SymbolTableEntry.DataType type = SymbolTableEntry.DataType.INVALID; 
+                DataType type = DataType.INVALID; 
 
-                if(symbolTable.containsKey(variableId))
+                if(variablesTable.containsKey(variableId))
                 {
-                    for(SymbolTableEntry e : symbolTable.get(variableId))
-                    {
-                        if(e.type == SymbolTableEntry.EntryType.VARIABLE)
-                        {
-                            type = e.dataType;
-                            break;
-                        }
-                    }
+                    type = variablesTable.get(variableId).type;
                 }
 
                 setOut(node, type);
@@ -451,7 +445,7 @@ public class VisitorFirstPass extends DepthFirstAdapter{
             }
             else if(strategy.equals(STRATEGY_TYPE))
             {
-                setOut(node, SymbolTableEntry.DataType.NUMBER);
+                setOut(node, DataType.NUMBER);
             }
         }
     }
@@ -469,7 +463,7 @@ public class VisitorFirstPass extends DepthFirstAdapter{
             }
             else if(strategy.equals(STRATEGY_TYPE))
             {
-                setOut(node, SymbolTableEntry.DataType.STRING);
+                setOut(node, DataType.STRING);
             }
         }
     }
@@ -512,7 +506,7 @@ public class VisitorFirstPass extends DepthFirstAdapter{
                 setIn(arithmetics, STRATEGY_TYPE);
                 arithmetics.apply(this);
 
-                setOut(node, (SymbolTableEntry.DataType)getOut(arithmetics));
+                setOut(node, (DataType)getOut(arithmetics));
             }
         }
     }
@@ -555,7 +549,7 @@ public class VisitorFirstPass extends DepthFirstAdapter{
                 setIn(arithmetics, STRATEGY_TYPE);
                 arithmetics.apply(this);
 
-                setOut(node, (SymbolTableEntry.DataType)getOut(arithmetics));
+                setOut(node, (DataType)getOut(arithmetics));
             }
         }
     }
@@ -601,7 +595,7 @@ public class VisitorFirstPass extends DepthFirstAdapter{
                 setIn(arithmetics, STRATEGY_TYPE);
                 arithmetics.apply(this);
 
-                setOut(node, (SymbolTableEntry.DataType)getOut(arithmetics));
+                setOut(node, (DataType)getOut(arithmetics));
             }
         }
     }
@@ -619,7 +613,7 @@ public class VisitorFirstPass extends DepthFirstAdapter{
             }
             else if(strategy.equals(STRATEGY_TYPE))
             {
-                setOut(node, SymbolTableEntry.DataType.STRING);
+                setOut(node, DataType.STRING);
             }
         }
     }
@@ -670,11 +664,11 @@ public class VisitorFirstPass extends DepthFirstAdapter{
             }
             else if(strategy.equals(STRATEGY_TYPE))
             {
-                SymbolTableEntry.DataType returnType = SymbolTableEntry.DataType.INVALID;
+                DataType returnType = DataType.INVALID;
                 
-                if(symbolTable.containsKey(functionCall.getId().toString().trim()))
+                if(functionsTable.containsKey(functionCall.getId().toString().trim()))
                 {
-                    ArrayList<SymbolTableEntry> entries = symbolTable.get(functionCall.getId().toString().trim());
+                    ArrayList<SymbolTableEntryFunction> entries = functionsTable.get(functionCall.getId().toString().trim());
 
                     int numFunctionCallParameters = 0;
                     if(functionCall.getPArgList().size() != 0)
@@ -688,13 +682,13 @@ public class VisitorFirstPass extends DepthFirstAdapter{
                     }
 
                     // search all entries of type function and look for a function with total number of parameters >= call function num parameters
-                    for(SymbolTableEntry e : entries)
+                    for(SymbolTableEntryFunction e : entries)
                     {
-                        if(e.type == SymbolTableEntry.EntryType.FUNCTION && 
-                        (numFunctionCallParameters <= e.numTotalParameters && numFunctionCallParameters >= e.numNonDefaultParameters))
+                        if( 
+                        (numFunctionCallParameters <= e.parameters.size() && numFunctionCallParameters >= e.numNonDefaultParameters))
                         {
                             // found function return its type
-                            returnType = e.dataType;
+                            returnType = e.returnType;
                             break;
                         }
                     }
@@ -734,7 +728,7 @@ public class VisitorFirstPass extends DepthFirstAdapter{
                 setIn(arithmetics, STRATEGY_TYPE);
                 arithmetics.apply(this);
 
-                setOut(node, (SymbolTableEntry.DataType)getOut(arithmetics));
+                setOut(node, (DataType)getOut(arithmetics));
             }
         }
     }
@@ -789,11 +783,11 @@ public class VisitorFirstPass extends DepthFirstAdapter{
             }
             else if(strategy.equals(STRATEGY_TYPE))
             {
-                SymbolTableEntry.DataType returnType = SymbolTableEntry.DataType.INVALID;
+                DataType returnType = DataType.INVALID;
                 
-                if(symbolTable.containsKey(functionCall.getId().toString().trim()))
+                if(functionsTable.containsKey(functionCall.getId().toString().trim()))
                 {
-                    ArrayList<SymbolTableEntry> entries = symbolTable.get(functionCall.getId().toString().trim());
+                    ArrayList<SymbolTableEntryFunction> entries = functionsTable.get(functionCall.getId().toString().trim());
 
                     int numFunctionCallParameters = 0;
                     if(functionCall.getPArgList().size() != 0)
@@ -807,13 +801,13 @@ public class VisitorFirstPass extends DepthFirstAdapter{
                     }
 
                     // search all entries of type function and look for a function with total number of parameters >= call function num parameters
-                    for(SymbolTableEntry e : entries)
+                    for(SymbolTableEntryFunction e : entries)
                     {
-                        if(e.type == SymbolTableEntry.EntryType.FUNCTION && 
-                        (numFunctionCallParameters <= e.numTotalParameters && numFunctionCallParameters >= e.numNonDefaultParameters))
+                        if(
+                        (numFunctionCallParameters <= e.parameters.size() && numFunctionCallParameters >= e.numNonDefaultParameters))
                         {
                             // found function return its type
-                            returnType = e.dataType;
+                            returnType = e.returnType;
                             break;
                         }
                     }
@@ -838,7 +832,7 @@ public class VisitorFirstPass extends DepthFirstAdapter{
             }
             else if(strategy.equals(STRATEGY_TYPE))
             {
-                setOut(node, SymbolTableEntry.DataType.NUMBER);
+                setOut(node, DataType.NUMBER);
             }
         }
     }
@@ -856,7 +850,7 @@ public class VisitorFirstPass extends DepthFirstAdapter{
             }
             else if(strategy.equals(STRATEGY_TYPE))
             {
-                setOut(node, SymbolTableEntry.DataType.STRING);
+                setOut(node, DataType.STRING);
             }
         }
     }
@@ -874,7 +868,7 @@ public class VisitorFirstPass extends DepthFirstAdapter{
             }
             else if(strategy.equals(STRATEGY_TYPE))
             {
-                setOut(node, SymbolTableEntry.DataType.NONE);
+                setOut(node, DataType.NONE);
             }
         }
     }
@@ -892,24 +886,12 @@ public class VisitorFirstPass extends DepthFirstAdapter{
 
         String variableID = id + "[" + (String)getOut(arithmetics) + "]";
 
-        if(!symbolTable.containsKey(variableID))
-        {
-            symbolTable.put(variableID, new ArrayList<SymbolTableEntry>());
-        }
-
         boolean isAlreadyDefined = false;
-        int t = 0;
 
-        ArrayList<SymbolTableEntry> entries = symbolTable.get(variableID);
-        
-        for(int i = 0; i < entries.size(); ++i)
+        if(variablesTable.containsKey(variableID))
         {
-            if(entries.get(i).type == SymbolTableEntry.EntryType.VARIABLE)
-            {
-                isAlreadyDefined = true;
-                t = i;
-                break;
-            }
+            isAlreadyDefined = true;
+
         }
 
         arithmetics = node.getAssignExpression();
@@ -922,23 +904,22 @@ public class VisitorFirstPass extends DepthFirstAdapter{
         setIn(arithmetics, STRATEGY_TYPE);
         arithmetics.apply(this);
         
-        SymbolTableEntry.DataType variableType = (SymbolTableEntry.DataType)getOut(arithmetics);
+        DataType variableType = (DataType)getOut(arithmetics);
 
         if(isAlreadyDefined)
         {
-            SymbolTableEntry e = entries.get(t);
+            SymbolTableEntryVariable e = variablesTable.get(variableID);
 
             e.value = variableInitialValue;
-            e.dataType = variableType;
+            e.type = variableType;
         }
         else
         {
-            SymbolTableEntry e = new SymbolTableEntry();
-            e.type = SymbolTableEntry.EntryType.VARIABLE;
+            SymbolTableEntryVariable e = new SymbolTableEntryVariable();
             e.value = variableInitialValue;
-            e.dataType = variableType;
+            e.type = variableType;
 
-            symbolTable.get(variableID).add(e);
+            variablesTable.put(variableID, e);
         }
     }
 
@@ -947,24 +928,11 @@ public class VisitorFirstPass extends DepthFirstAdapter{
     {
         String variableID = node.getId().toString().trim();
         
-        if(!symbolTable.containsKey(variableID))
-        {
-            symbolTable.put(variableID, new ArrayList<SymbolTableEntry>());
-        }
-
         boolean isAlreadyDefined = false;
-        int t = 0;
-
-        ArrayList<SymbolTableEntry> entries = symbolTable.get(variableID);
-
-        for(int i = 0; i < entries.size(); ++i)
+        
+        if(variablesTable.containsKey(variableID))
         {
-            if(entries.get(i).type == SymbolTableEntry.EntryType.VARIABLE)
-            {
-                isAlreadyDefined = true;
-                t = i;
-                break;
-            }
+           isAlreadyDefined = true;
         }
 
         PPArithmetics arithmetics = node.getPArithmetics();
@@ -977,22 +945,22 @@ public class VisitorFirstPass extends DepthFirstAdapter{
         setIn(arithmetics, STRATEGY_TYPE);
         arithmetics.apply(this);
 
-        SymbolTableEntry.DataType variableType = (SymbolTableEntry.DataType)getOut(arithmetics);
+        DataType variableType = (DataType)getOut(arithmetics);
 
         if(isAlreadyDefined)
         {
-            SymbolTableEntry e = entries.get(t);
+            SymbolTableEntryVariable e = variablesTable.get(variableID);
             e.value = variableInitialValue;
-            e.dataType = variableType;
+            e.type = variableType;
         }
         else
         {
-            SymbolTableEntry e = new SymbolTableEntry();
-            e.type = SymbolTableEntry.EntryType.VARIABLE;
-            e.value = variableInitialValue;
-            e.dataType = variableType;
+            SymbolTableEntryVariable e = new SymbolTableEntryVariable();
 
-            symbolTable.get(variableID).add(e);
+            e.value = variableInitialValue;
+            e.type = variableType;
+
+            variablesTable.put(variableID, e);
         }
     }
 }

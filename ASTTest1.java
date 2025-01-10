@@ -24,26 +24,24 @@ public class ASTTest1
 
       ast.apply(firstPass);
 
-      for(Entry<String, ArrayList<SymbolTableEntry>> e : firstPass.symbolTable.entrySet())
+      for(Entry<String, ArrayList<SymbolTableEntryFunction>> e : firstPass.functionsTable.entrySet())
       {
-        ArrayList<SymbolTableEntry> entries = e.getValue();
+        ArrayList<SymbolTableEntryFunction> entries = e.getValue();
         
         for(int i = 0; i < entries.size(); ++i)
         {
-          SymbolTableEntry entry = entries.get(i);
-
-          if(entry.type != SymbolTableEntry.EntryType.FUNCTION) continue;
+          SymbolTableEntryFunction entry = entries.get(i);
 
           System.out.printf("def %s(", e.getKey());
-          for(int j = 0; j < entry.parameterNames.size(); ++j)
+          for(int j = 0; j < entry.parameters.size(); ++j)
           {
-            if(entry.defaultValues.get(j).equals("None"))
+            if(entry.parameters.get(j).defaultValue.equals("None"))
             {
-              System.out.printf("%s,", entry.parameterNames.get(j));
+              System.out.printf("%s,", entry.parameters.get(j).name);
             }
             else
             {
-              System.out.printf("%s=%s,", entry.parameterNames.get(j), entry.defaultValues.get(j));
+              System.out.printf("%s=%s,", entry.parameters.get(j).name, entry.parameters.get(j).defaultValue);
             }
           }
 
@@ -51,18 +49,11 @@ public class ASTTest1
         }
       }
 
-      for(Entry<String, ArrayList<SymbolTableEntry>> e : firstPass.symbolTable.entrySet())
+      for(Entry<String, SymbolTableEntryVariable> e : firstPass.variablesTable.entrySet())
       {
-        ArrayList<SymbolTableEntry> entries = e.getValue();
-        
-        for(int i = 0; i < entries.size(); ++i)
-        {
-          SymbolTableEntry entry = entries.get(i);
+        SymbolTableEntryVariable entry = e.getValue();
           
-          if(entry.type != SymbolTableEntry.EntryType.VARIABLE) continue;
-          
-          System.out.printf("%s=%s\n", e.getKey(), entry.value);
-        }
+        System.out.printf("%s=%s\n", e.getKey(), entry.value);
       }
 
 	//ast.apply(new ASTPrinter());
