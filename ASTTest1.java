@@ -8,62 +8,67 @@ import java.util.Map.Entry;
 
 public class ASTTest1
 {
-  public static void main(String[] args)
-  {
-    try
-    {
-      Parser parser = 
-        new Parser(
-        new Lexer(
-        new PushbackReader(
-        new FileReader(args[0].toString()), 1024)));
+	public static void main(String[] args){
 
-      Start ast = parser.parse();
+		try
+		{
+			Parser parser = 
+			new Parser(
+			new Lexer(
+			new PushbackReader(
+			new FileReader(args[0].toString()), 1024)));
 
-      VisitorFirstPass firstPass = new VisitorFirstPass();
+			Start ast = parser.parse();
 
-      ast.apply(firstPass);
+			VisitorFirstPass firstPass = new VisitorFirstPass();
 
-      for(Entry<String, ArrayList<SymbolTableEntryFunction>> e : firstPass.functionsTable.entrySet())
-      {
-        ArrayList<SymbolTableEntryFunction> entries = e.getValue();
-        
-        for(int i = 0; i < entries.size(); ++i)
-        {
-          SymbolTableEntryFunction entry = entries.get(i);
+			ast.apply(firstPass);
 
-          System.out.printf("def %s(", e.getKey());
-          for(int j = 0; j < entry.parameters.size(); ++j)
-          {
-            if(entry.parameters.get(j).defaultValue.equals("None"))
-            {
-              System.out.printf("%s,", entry.parameters.get(j).name);
-            }
-            else
-            {
-              System.out.printf("%s=%s,", entry.parameters.get(j).name, entry.parameters.get(j).defaultValue);
-            }
-          }
+			for(Entry<String, ArrayList<SymbolTableEntryFunction>> e : firstPass.functionsTable.entrySet())
+			{
+				ArrayList<SymbolTableEntryFunction> entries = e.getValue();
+				
+				for(int i = 0; i < entries.size(); ++i)
+				{
+					SymbolTableEntryFunction entry = entries.get(i);
 
-          System.out.printf(")\n");
-        }
-      }
+					System.out.printf("def %s(", e.getKey());
+					for(int j = 0; j < entry.parameters.size(); ++j)
+					{
+						if(entry.parameters.get(j).defaultValue.equals("None"))
+						{
+							System.out.printf("%s,", entry.parameters.get(j).name);
+						}
+						else
+						{
+							System.out.printf("%s=%s,", entry.parameters.get(j).name, entry.parameters.get(j).defaultValue);
+						}
+					}
 
-      for(Entry<String, SymbolTableEntryVariable> e : firstPass.variablesTable.entrySet())
-      {
-        SymbolTableEntryVariable entry = e.getValue();
-          
-        System.out.printf("%s=%s\n", e.getKey(), entry.value);
-      }
+					System.out.printf(")\n");
+				}
+			}
 
-	//ast.apply(new ASTPrinter());
+			for(Entry<String, SymbolTableEntryVariable> e : firstPass.variablesTable.entrySet())
+			{
+				SymbolTableEntryVariable entry = e.getValue();
+					
+				System.out.printf("%s=%s\n", e.getKey(), entry.value);
+			}
 
-//      System.out.println(ast);
-    }
-    catch (Exception e)
-    {
-      System.err.println(e);
-    }
-  }
+
+			System.out.println("=========================");
+			VisitorSecondPass secondPass = new VisitorSecondPass(firstPass.variablesTable, firstPass.functionsTable);
+
+			ast.apply(secondPass);
+			//ast.apply(new ASTPrinter());
+
+			//      System.out.println(ast);
+		}
+		catch (Exception e)
+		{
+			System.err.println(e);
+		}
+	}
 }
 

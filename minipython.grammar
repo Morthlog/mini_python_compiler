@@ -106,15 +106,13 @@ Productions
 			| {for} tab* for [for_id]:id in [in_id]:id semi p_statement {-> New p_statement.for( for_id, in_id, p_statement ) }
 			| {return} tab* return p_arithmetics {-> New p_statement.return( p_arithmetics ) }
 			| {print} tab* print p_arithmetics p_comma_value* {-> New p_statement.print( p_arithmetics, [p_comma_value] ) }
-			| {assign_op} tab* id p_assign_operators p_arithmetics {-> New p_statement.assign_op( id, p_arithmetics ) }
+			| {assign_op} tab* id assign p_arithmetics {-> New p_statement.assign_op( id, p_arithmetics ) }
+			| {assign_minus} tab* id minus_assign p_arithmetics {-> New p_statement.assign_minus( id, p_arithmetics ) }
+			| {assign_div} tab* id div_assign p_arithmetics {-> New p_statement.assign_div( id, p_arithmetics ) }
 			| {assign_array} tab* id l_br [brackets_expression]:p_arithmetics r_br assign [assign_expression]:p_arithmetics {-> New p_statement.assign_array( id, brackets_expression, assign_expression ) }
 			| {assert} tab* assert p_arithmetics p_comma_value? {-> New p_statement.assert( p_arithmetics, [p_comma_value] ) }
 			| {function_call} tab* p_function_call {-> New p_statement.function_call( p_function_call ) }
 			| {import} tab* p_import {-> p_import.p_statement};
-
-	p_assign_operators{->} = {assign} assign {->}
-			| {minus_assign} minus_assign {->}
-			| {div_assign} div_assign {->};
 
 	p_value{-> p_arithmetics} = {function_call} p_id_dot p_function_call {-> New p_arithmetics.function_call( p_id_dot, p_function_call ) }
 			| {number} number  {-> New p_arithmetics.number( number ) }
@@ -208,6 +206,8 @@ Abstract Syntax Tree
 				| {return} p_arithmetics
 				| {print} p_arithmetics p_comma_value*
 				| {assign_op} id p_arithmetics
+				| {assign_minus} id p_arithmetics
+				| {assign_div} id p_arithmetics
 				| {assign_array} id [brackets_expression]:p_arithmetics [assign_expression]:p_arithmetics
 				| {assert} p_arithmetics p_comma_value* 
 				| {function_call} p_function_call

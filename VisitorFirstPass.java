@@ -1,44 +1,14 @@
 import minipython.analysis.DepthFirstAdapter;
-import minipython.node.APFunction;
-import minipython.node.APFunctionCall;
-import minipython.node.APIdDot;
-import minipython.node.AParsPArithmetics;
-import minipython.node.APlusPArithmetics;
-import minipython.node.AStringPArithmetics;
-import minipython.node.PPArgList;
-import minipython.node.PPArithmetics;
-import minipython.node.PPAssignValue;
-import minipython.node.PPCommaValue;
-import minipython.node.AAsciiPArithmetics;
-import minipython.node.AAssignArrayPStatement;
-import minipython.node.AAssignOpPStatement;
-import minipython.node.ADivPArithmetics;
-import minipython.node.AExpPArithmetics;
-import minipython.node.AFunctionCallPArithmetics;
-import minipython.node.AFunctionPArithmetics;
-import minipython.node.AIdPArithmetics;
-import minipython.node.ALenPArithmetics;
-import minipython.node.AListPArithmetics;
-import minipython.node.AListcallPArithmetics;
-import minipython.node.AMaxPArithmetics;
-import minipython.node.AMinPArithmetics;
-import minipython.node.AMinusPArithmetics;
-import minipython.node.AModPArithmetics;
-import minipython.node.AMultPArithmetics;
-import minipython.node.ANonePArithmetics;
-import minipython.node.ANumberPArithmetics;
-import minipython.node.APArgList;
-import minipython.node.APArgument;
-import minipython.node.APAssignValue;
-import minipython.node.APCommaAssignValue;
-import minipython.node.APCommaValue;
+import minipython.node.*;
 
 import java.util.ArrayList;
 import java.util.Hashtable;
+import java.util.List;
 
 public class VisitorFirstPass extends DepthFirstAdapter{
     public Hashtable<String, SymbolTableEntryVariable> variablesTable;
     public Hashtable<String, ArrayList<SymbolTableEntryFunction>> functionsTable;
+    public Hashtable<Node, SymbolTableEntryFunction> nodeToSymbol;
 
     private final String STRATEGY_VALUE = "VALUE";
     private final String STRATEGY_TYPE = "TYPE";
@@ -47,6 +17,7 @@ public class VisitorFirstPass extends DepthFirstAdapter{
     {
         variablesTable = new Hashtable<String, SymbolTableEntryVariable>();
         functionsTable = new Hashtable<String, ArrayList<SymbolTableEntryFunction>>();
+        nodeToSymbol = new Hashtable<>();
     }
 
     
@@ -110,6 +81,14 @@ public class VisitorFirstPass extends DepthFirstAdapter{
 
                 newEntry.parameters.add(new FunctionParameter());
                 newEntry.parameters.get(newEntry.parameters.size() - 1).name = parameterID;
+
+
+                /*
+                  Make sure the default values are on the right side of the function
+                  func (x, y=2, z) is illegal
+                  func (x, y=2, z=2) is legal
+                  func (x, y, z=2) is legal
+                 */
 
                 if(parameter.getPAssignValue().size() != 0)
                 {
@@ -176,10 +155,46 @@ public class VisitorFirstPass extends DepthFirstAdapter{
         if(isEntryValid)
         {
             functionsTable.get(functionID).add(newEntry);
+            nodeToSymbol.put(node, newEntry);
         }
         else
         {
             System.out.println("[" + node.getId().getLine() + "," + node.getId().getPos() +"]:  Function " + functionID + " cannot be defined as it would cause ambiguity when called with other same name functions");
+        }
+    }
+
+    @Override
+    public void outAPFunction(APFunction node)
+    {
+        System.out.println(node);
+        if (node.getPStatement() instanceof AReturnPStatement)
+        {
+            PPArithmetics returnNode = ((AReturnPStatement) node.getPStatement()).getPArithmetics();
+            SymbolTableEntryFunction temp = nodeToSymbol.get(node);
+            if (temp == null)  //function was not successfully defined
+                return;
+            // set returnNode to temp.return instead
+            PPArithmetics nodeArith = ((AReturnPStatement) node.getPStatement()).getPArithmetics();
+            temp.returnType = (DataType) getOut(nodeArith);
+
+        }
+    }
+
+    @Override
+    public void outAPlusPArithmetics(APlusPArithmetics node)
+    {
+        setIn(node.getL(), STRATEGY_TYPE);
+        node.getL().apply(this);
+        setIn(node.getR(), STRATEGY_TYPE);
+        node.getR().apply(this);
+
+        if((DataType)getOut(node.getL()) != (DataType)getOut(node.getR()))
+        {
+            setOut(node, DataType.INVALID);
+        }
+        else
+        {
+            setOut(node, (DataType)getOut(node.getL()));
         }
     }
 
