@@ -1,5 +1,6 @@
 import java.io.*;
 import minipython.lexer.Lexer;
+import minipython.node.Node;
 import minipython.parser.Parser;
 import minipython.node.Start;
 
@@ -24,13 +25,13 @@ public class ASTTest1
 
 			ast.apply(firstPass);
 
-			for(Entry<String, ArrayList<SymbolTableEntryFunction>> e : firstPass.functionsTable.entrySet())
+			for(Entry<String, ArrayList<Tuples<Node, SymbolTableEntryFunction>>> e : firstPass.functionsTable.entrySet())
 			{
-				ArrayList<SymbolTableEntryFunction> entries = e.getValue();
+				ArrayList<Tuples<Node, SymbolTableEntryFunction>> entries = e.getValue();
 				
 				for(int i = 0; i < entries.size(); ++i)
 				{
-					SymbolTableEntryFunction entry = entries.get(i);
+					SymbolTableEntryFunction entry = entries.get(i).getSecond();
 
 					System.out.printf("def %s(", e.getKey());
 					for(int j = 0; j < entry.parameters.size(); ++j)
@@ -57,7 +58,7 @@ public class ASTTest1
 			}
 
 
-			System.out.println("=========================");
+			System.out.println("==========================================");
 			VisitorSecondPass secondPass = new VisitorSecondPass(firstPass.variablesTable, firstPass.functionsTable);
 
 			ast.apply(secondPass);

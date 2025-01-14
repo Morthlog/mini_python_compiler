@@ -7,7 +7,7 @@ import java.util.List;
 
 public class VisitorFirstPass extends DepthFirstAdapter{
     public Hashtable<String, SymbolTableEntryVariable> variablesTable;
-    public Hashtable<String, ArrayList<SymbolTableEntryFunction>> functionsTable;
+    public Hashtable<String, ArrayList<Tuples<Node, SymbolTableEntryFunction>>> functionsTable;
     public Hashtable<Node, SymbolTableEntryFunction> nodeToSymbol;
 
     private final String STRATEGY_VALUE = "VALUE";
@@ -16,7 +16,7 @@ public class VisitorFirstPass extends DepthFirstAdapter{
     public VisitorFirstPass()
     {
         variablesTable = new Hashtable<String, SymbolTableEntryVariable>();
-        functionsTable = new Hashtable<String, ArrayList<SymbolTableEntryFunction>>();
+        functionsTable = new Hashtable<String, ArrayList<Tuples<Node, SymbolTableEntryFunction>>>();
         nodeToSymbol = new Hashtable<>();
     }
 
@@ -127,20 +127,20 @@ public class VisitorFirstPass extends DepthFirstAdapter{
 
         if(!functionsTable.containsKey(functionID))
         {
-            functionsTable.put(functionID, new ArrayList<SymbolTableEntryFunction>());
+            functionsTable.put(functionID, new ArrayList<Tuples<Node, SymbolTableEntryFunction>>());
         }
 
         // we do not know what the return type is until we reach a return statement on the second pass, we assume None
         newEntry.returnType = DataType.UNKNOWN;
         newEntry.numNonDefaultParameters = numNonDefaultParameters;
 
-        ArrayList<SymbolTableEntryFunction> entries = functionsTable.get(functionID);
+        ArrayList<Tuples<Node, SymbolTableEntryFunction>> entries = functionsTable.get(functionID);
 
         boolean isEntryValid = true;
 
         for(int i = 0; i < entries.size(); ++i)
         {
-            SymbolTableEntryFunction entry = entries.get(i);
+            SymbolTableEntryFunction entry = entries.get(i).getSecond();
 
             if(numTotalParameters == entry.parameters.size()
             || (numNonDefaultParameters <= entry.numNonDefaultParameters && numTotalParameters > entry.parameters.size()) ||
@@ -154,7 +154,7 @@ public class VisitorFirstPass extends DepthFirstAdapter{
 
         if(isEntryValid)
         {
-            functionsTable.get(functionID).add(newEntry);
+            functionsTable.get(functionID).add(new Tuples<>(node, newEntry));
             nodeToSymbol.put(node, newEntry);
         }
         else
@@ -683,7 +683,7 @@ public class VisitorFirstPass extends DepthFirstAdapter{
                 
                 if(functionsTable.containsKey(functionCall.getId().toString().trim()))
                 {
-                    ArrayList<SymbolTableEntryFunction> entries = functionsTable.get(functionCall.getId().toString().trim());
+                    ArrayList<Tuples<Node, SymbolTableEntryFunction>> entries = functionsTable.get(functionCall.getId().toString().trim());
 
                     int numFunctionCallParameters = 0;
                     if(functionCall.getPArgList().size() != 0)
@@ -697,13 +697,13 @@ public class VisitorFirstPass extends DepthFirstAdapter{
                     }
 
                     // search all entries of type function and look for a function with total number of parameters >= call function num parameters
-                    for(SymbolTableEntryFunction e : entries)
+                    for(Tuples<Node, SymbolTableEntryFunction> e : entries)
                     {
                         if( 
-                        (numFunctionCallParameters <= e.parameters.size() && numFunctionCallParameters >= e.numNonDefaultParameters))
+                        (numFunctionCallParameters <= e.getSecond().parameters.size() && numFunctionCallParameters >= e.getSecond().numNonDefaultParameters))
                         {
                             // found function return its type
-                            returnType = e.returnType;
+                            returnType = e.getSecond().returnType;
                             break;
                         }
                     }
@@ -802,7 +802,7 @@ public class VisitorFirstPass extends DepthFirstAdapter{
                 
                 if(functionsTable.containsKey(functionCall.getId().toString().trim()))
                 {
-                    ArrayList<SymbolTableEntryFunction> entries = functionsTable.get(functionCall.getId().toString().trim());
+                    ArrayList<Tuples<Node, SymbolTableEntryFunction>> entries = functionsTable.get(functionCall.getId().toString().trim());
 
                     int numFunctionCallParameters = 0;
                     if(functionCall.getPArgList().size() != 0)
@@ -816,13 +816,13 @@ public class VisitorFirstPass extends DepthFirstAdapter{
                     }
 
                     // search all entries of type function and look for a function with total number of parameters >= call function num parameters
-                    for(SymbolTableEntryFunction e : entries)
+                    for(Tuples<Node, SymbolTableEntryFunction> e : entries)
                     {
                         if(
-                        (numFunctionCallParameters <= e.parameters.size() && numFunctionCallParameters >= e.numNonDefaultParameters))
+                        (numFunctionCallParameters <= e.getSecond().parameters.size() && numFunctionCallParameters >= e.getSecond().numNonDefaultParameters))
                         {
                             // found function return its type
-                            returnType = e.returnType;
+                            returnType = e.getSecond().returnType;
                             break;
                         }
                     }

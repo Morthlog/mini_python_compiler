@@ -6,4 +6,9 @@ public class SymbolTableEntryVariable {
         value = "";
         type = DataType.UNKNOWN;
     }
+
+    public SymbolTableEntryVariable(String value, DataType type) {
+        this.value = value;
+        this.type = type;
+    }
 }

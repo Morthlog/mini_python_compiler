@@ -1,11 +1,11 @@
 #! /usr/bin/env python
 #A miniPython example
 funcwithdef("Jogh", 10)
+doSth(2,6, "pop")
 add()
 add(4, 5, "Pop")
 add(1,4,"7",9)
 add2(2, 5)
-doSth(2,6, "pop")
 
 def add(x, y, z):
         return y + x + z
