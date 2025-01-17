@@ -20,7 +20,10 @@ public class ASTTest1
 			new FileReader(args[0].toString()), 1024)));
 
 			Start ast = parser.parse();
-
+			//===============================
+			ast.apply(new ASTPrinter());
+			System.out.println(ast);
+			//===============================
 			VisitorFirstPass firstPass = new VisitorFirstPass();
 
 			ast.apply(firstPass);
