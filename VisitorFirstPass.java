@@ -901,39 +901,9 @@ public class VisitorFirstPass extends DepthFirstAdapter{
 
         String variableID = id + "[" + (String)getOut(arithmetics) + "]";
 
-        boolean isAlreadyDefined = false;
-
-        if(variablesTable.containsKey(variableID))
-        {
-            isAlreadyDefined = true;
-
-        }
-
-        arithmetics = node.getAssignExpression();
-
-        setIn(arithmetics, STRATEGY_VALUE);
-        arithmetics.apply(this);
-
-        String variableInitialValue = (String)getOut(arithmetics);
-
-        setIn(arithmetics, STRATEGY_TYPE);
-        arithmetics.apply(this);
-        
-        DataType variableType = (DataType)getOut(arithmetics);
-
-        if(isAlreadyDefined)
-        {
-            SymbolTableEntryVariable e = variablesTable.get(variableID);
-
-            e.value = variableInitialValue;
-            e.type = variableType;
-        }
-        else
+        if(!variablesTable.containsKey(variableID))
         {
             SymbolTableEntryVariable e = new SymbolTableEntryVariable();
-            e.value = variableInitialValue;
-            e.type = variableType;
-
             variablesTable.put(variableID, e);
         }
     }
@@ -942,39 +912,10 @@ public class VisitorFirstPass extends DepthFirstAdapter{
     public void inAAssignOpPStatement(AAssignOpPStatement node)
     {
         String variableID = node.getId().toString().trim();
-        
-        boolean isAlreadyDefined = false;
-        
-        if(variablesTable.containsKey(variableID))
-        {
-           isAlreadyDefined = true;
-        }
 
-        PPArithmetics arithmetics = node.getPArithmetics();
-
-        setIn(arithmetics, STRATEGY_VALUE);
-        arithmetics.apply(this);
-
-        String variableInitialValue = (String)getOut(arithmetics);
-
-        setIn(arithmetics, STRATEGY_TYPE);
-        arithmetics.apply(this);
-
-        DataType variableType = (DataType)getOut(arithmetics);
-
-        if(isAlreadyDefined)
-        {
-            SymbolTableEntryVariable e = variablesTable.get(variableID);
-            e.value = variableInitialValue;
-            e.type = variableType;
-        }
-        else
+        if(!variablesTable.containsKey(variableID))
         {
             SymbolTableEntryVariable e = new SymbolTableEntryVariable();
-
-            e.value = variableInitialValue;
-            e.type = variableType;
-
             variablesTable.put(variableID, e);
         }
     }

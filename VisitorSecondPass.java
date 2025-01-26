@@ -21,11 +21,34 @@ public class VisitorSecondPass extends DepthFirstAdapter {
         {
             // value and type should NOT be set from first visitor.
             System.out.println(obj.getKey() + " " + obj.getValue().value + " " + obj.getValue().type);
-            obj.getValue().value = null;
-            obj.getValue().type = null;
         }
         System.out.println();
     }
+
+
+    // /**
+    //  * Επιστρέφει τον τύπο της μεταβλητής varName:
+    //  * πρώτα ψάχνει στη λίστα παραμέτρων τρέχουσας συνάρτησης (contextParams),
+    //  * αν δεν βρεθεί, ψάχνει στο global variablesTable,
+    //  * αν και πάλι δεν βρεθεί, επιστρέφει null.
+    //  */
+    // private DataType findVariableType(String varName, ArrayList<FunctionParameter> contextParams) {
+    //     // function-params check
+    //     if (contextParams != null) {
+    //         for (FunctionParameter fp : contextParams) {
+    //             if (fp.name.equals(varName)) {
+    //                 return fp.type;  
+    //             }
+    //         }
+    //     }
+    //     // Check global variablesTable
+    //     SymbolTableEntryVariable entry = variablesTable.get(varName);
+    //     if (entry == null) {
+    //         return null;  // not defined
+    //     }
+    //     return entry.type;
+    // }
+
 
     /**
      * Rule 2, 3
@@ -39,7 +62,7 @@ public class VisitorSecondPass extends DepthFirstAdapter {
         System.out.println("ID: " + id);
         if (!functionsTable.containsKey(id))
         {
-            System.out.printf("ERROR: Function named %s is not defined in file\n", id);
+            System.out.printf("ERROR at [%s,%s]: Function named %s is not defined in file\n", node.getId().getLine(), node.getId().getPos(), id);
             return;
         }
         System.out.println("The function name exists");
@@ -95,7 +118,7 @@ public class VisitorSecondPass extends DepthFirstAdapter {
 
         if (!foundFunc)
         {
-            System.out.printf("ERROR: There is no valid function call for %s with arguments %s\n", id, node.getPArgList());
+            System.out.printf("ERROR at [%s,%s]: There is no valid function call for %s with arguments %s\n", node.getId().getLine(), node.getId().getPos(), id, node.getPArgList());
         }
         else // part of 6 coverage
         {
@@ -189,11 +212,52 @@ public class VisitorSecondPass extends DepthFirstAdapter {
         setIn(node.getR(), getIn(node));
     }
 
+    // @Override
+    // public void inAMultPArithmetics(AMultPArithmetics node) {
+    //     System.out.println("__________ inAMultPArithmetics __________");
+    //     setOperands(node.getL(), node.getR());
+    //     if (!checkOperandsNumeric(node)) {
+    //         System.out.println("ERROR: Multiplication requires numeric operands.");
+    //     } else {
+    //         setOut(node, DataType.NUMBER);
+    //     }
+    // }
+
+    // @Override
+    // public void inADivPArithmetics(ADivPArithmetics node) {
+    //     System.out.println("__________ inADivPArithmetics __________");
+    //     setOperands(node.getL(), node.getR());
+    //     if (!checkOperandsNumeric(node)) {
+    //         System.out.println("ERROR: Division requires numeric operands.");
+    //     } else {
+    //         setOut(node, DataType.NUMBER);
+    //     }
+    // }
+
+    @Override
+    public void inAMultPArithmetics(AMultPArithmetics node) {
+        System.out.println("__________ inAMultPArithmetics __________");
+        setIn(node.getL(), getIn(node));
+        setIn(node.getR(), getIn(node));
+    }
+
+    @Override
+    public void inADivPArithmetics(ADivPArithmetics node) {
+        System.out.println("__________ inADivPArithmetics __________");
+        setIn(node.getL(), getIn(node));
+        setIn(node.getR(), getIn(node));
+    }
+
+
     @Override
     public void inAPrintPStatement(APrintPStatement node) {
         System.out.println("__________ inAPrintPStatement __________");
         System.out.println(node);
         System.out.print("");
+        setIn(node.getPArithmetics(), getIn(node));
+        for (var obj: node.getPCommaValue())
+            setIn(((APCommaValue)obj).getPArithmetics(), getIn(node));
+
     }
 
     @Override
@@ -225,6 +289,28 @@ public class VisitorSecondPass extends DepthFirstAdapter {
         System.out.println(type);
     }
 
+    // @Override
+    // public void inAIdPArithmetics(AIdPArithmetics node) {
+    //     System.out.println("__________ inAIdPArithmetics __________");
+        
+    //     // from getIn(node) we get function-params list if it exists
+    //     ArrayList<FunctionParameter> contextParams = (ArrayList<FunctionParameter>) getIn(node.parent());
+        
+    //     String varName = node.getId().getText().trim();
+        
+    //     DataType type = findVariableType(varName, contextParams);
+
+    //     if (type == null) {
+    //         // not defined neither as parameter nor global
+    //         System.out.printf("ERROR at [%d,%d]: Variable '%s' is not defined before usage\n",
+    //                         node.getId().getLine(), node.getId().getPos(), varName);
+    //         type = DataType.INVALID; 
+    //     }
+
+    //     // set type as out of node
+    //     setOut(node, type);
+    // }
+
     @Override
     public void inAPArgList(APArgList node) {
         System.out.println("__________ inAPArgList __________");
@@ -245,6 +331,25 @@ public class VisitorSecondPass extends DepthFirstAdapter {
         System.out.println(node);
         SymbolTableEntryFunction info = (SymbolTableEntryFunction) getIn(node.parent());
         setIn(node, info);
+    }
+
+    @Override
+    public void inALenPArithmetics(ALenPArithmetics node) {
+        System.out.println("__________ inALenPArithmetics __________");
+        setIn(node.getPArithmetics(), getIn(node));
+    }
+
+    @Override
+    public void inAAssignOpPStatement(AAssignOpPStatement node) {
+        System.out.println("__________ inAAssignOpPStatement __________");
+
+        String variableID = node.getId().toString().trim();
+        if (!variablesTable.containsKey(variableID)) {
+            System.out.printf("ERROR: Variable %s is not defined.\n", variableID);
+            return;
+        }
+
+        setIn(node.getPArithmetics(), getIn(node));
     }
 
     /**
@@ -337,6 +442,76 @@ public class VisitorSecondPass extends DepthFirstAdapter {
         }
     }
 
+
+
+    @Override
+    public void outADivPArithmetics(ADivPArithmetics node) {
+        
+        System.out.println("__________ outADivPArithmetics __________");
+        DataType typeL = (DataType) getOut(node.getL());
+        setOut(node.getL(), null);
+        DataType typeR = (DataType) getOut(node.getR());
+        setOut(node.getR(), null);
+
+        if (typeL == DataType.NUMBER && typeR == DataType.NUMBER) {
+            setOut(node, DataType.NUMBER);
+        } else {
+            System.out.println("ERROR: Invalid division between " + typeL + " and " + typeR);
+            setOut(node, DataType.INVALID);
+        }
+    }
+    
+    @Override
+    public void outAMultPArithmetics(AMultPArithmetics node) {
+        System.out.println("__________ outAMultPArithmetics __________");
+        DataType typeL = (DataType)getOut(node.getL());
+        DataType typeR = (DataType)getOut(node.getR());
+
+        if (typeL == DataType.NUMBER && typeR == DataType.NUMBER) {
+            setOut(node, DataType.NUMBER);
+        } else {
+            System.out.printf("ERROR: Invalid multiplication between %s and %s\n", typeL, typeR);
+            setOut(node, DataType.INVALID);
+        }
+    }
+
+    @Override
+    public void outALenPArithmetics(ALenPArithmetics node) {
+        System.out.println("__________ outALenPArithmetics __________");
+
+        DataType type = (DataType) getOut(node.getPArithmetics());
+
+        if (type != DataType.STRING) {
+            System.out.printf("ERROR: Can't calculate length of type %s\n", type);
+            setOut(node, DataType.INVALID);
+        } else {
+            setOut(node, DataType.NUMBER);
+        }
+    }
+
+    /*
+
+    THIS IS ONLY FOR =
+    Take appropriate actions for -= and /= on their OWN methods
+    
+     */
+    @Override
+    public void outAAssignOpPStatement(AAssignOpPStatement node) {
+        System.out.println("__________ outAAssignOpPStatement __________");
+
+        String variableID = node.getId().toString().trim();
+        SymbolTableEntryVariable entry = variablesTable.get(variableID);
+        DataType type = (DataType) getOut(node.getPArithmetics());
+
+        if (entry.type != DataType.NUMBER || type != DataType.NUMBER) {
+            System.out.printf("ERROR at [%s,%s]: Can't use -= or /= on variable %s of type %s with type %s\n",
+                    node.getId().getLine(), node.getId().getPos(), variableID, entry.type, type);
+            setOut(node, DataType.INVALID);
+        } else {
+            setOut(node, DataType.NUMBER);
+            entry.type = DataType.NUMBER;
+        }
+    }
     // Give out info that DataType is Number
     @Override
     public void outANumberPArithmetics(ANumberPArithmetics node)
