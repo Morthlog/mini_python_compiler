@@ -42,6 +42,8 @@ def statements():
               while false:
                      for a in b:
                             return a
+b = 10
+c = "pop"
 print a , b
 a = 55 + 86
 b -= 66
@@ -92,6 +94,7 @@ print A.B("string2")
 print 10
 print len (5)
 print ascii (b)
+print max (5 ,4 ,5, "op", 8)
 print max (6, A.func("val", "val2"), "pop", None)
 print max (A.func('val', 'val2'), 'pop')
 print min (3)

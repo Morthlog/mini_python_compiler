@@ -9,7 +9,6 @@ public class VisitorFirstPass extends DepthFirstAdapter{
     public Hashtable<String, SymbolTableEntryVariable> variablesTable;
     public Hashtable<String, ArrayList<Tuples<Node, SymbolTableEntryFunction>>> functionsTable;
     public Hashtable<Node, SymbolTableEntryFunction> nodeToSymbol;
-
     private final String STRATEGY_VALUE = "VALUE";
     private final String STRATEGY_TYPE = "TYPE";
 
@@ -160,23 +159,6 @@ public class VisitorFirstPass extends DepthFirstAdapter{
         else
         {
             System.out.println("[" + node.getId().getLine() + "," + node.getId().getPos() +"]:  Function " + functionID + " cannot be defined as it would cause ambiguity when called with other same name functions");
-        }
-    }
-
-    @Override
-    public void outAPFunction(APFunction node)
-    {
-        System.out.println(node);
-        if (node.getPStatement() instanceof AReturnPStatement)
-        {
-            PPArithmetics returnNode = ((AReturnPStatement) node.getPStatement()).getPArithmetics();
-            SymbolTableEntryFunction temp = nodeToSymbol.get(node);
-            if (temp == null)  //function was not successfully defined
-                return;
-            // set returnNode to temp.return instead
-            PPArithmetics nodeArith = ((AReturnPStatement) node.getPStatement()).getPArithmetics();
-            temp.returnType = (DataType) getOut(nodeArith);
-
         }
     }
 
